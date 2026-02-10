@@ -1,4 +1,4 @@
 [workspace]
 resolver = "3"
-members = ["ens-normalize","rens"]
+members = ["ens-normalize","rens", "rens-cli"]
 
