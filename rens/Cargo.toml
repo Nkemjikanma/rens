@@ -6,3 +6,4 @@ edition = "2024"
 [dependencies]
 alloy = "1.6.2"
 ens-normalize = { path = "../ens-normalize" }
+tokio = { version = "1.49.0", features = ["full"] }
