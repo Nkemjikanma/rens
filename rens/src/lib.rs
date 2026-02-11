@@ -1,7 +1,12 @@
 pub mod name_hash;
+pub mod resolver;
+pub mod types;
 
 use alloy::primitives::{B256, b256};
 use name_hash::namehashing;
+use resolver::resolve_name;
+
+// use resolver;
 pub fn add(value: &str) -> B256 {
     let hash = namehashing(value);
 
