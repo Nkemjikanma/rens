@@ -1,10 +1,12 @@
-use super::name_hash::namehashing;
-use alloy::network::Ethereum;
-use alloy::primitives::{Address, address};
-use alloy::providers::{Provider, ProviderBuilder};
-use alloy::sol;
-use std::error::Error;
+use crate::errors::{NameResolutionError, RensError, RensResult};
 
+// use super::errors;
+use super::name_hash::namehash;
+// use alloy::network::Ethereum;
+use alloy::primitives::{Address, address};
+use alloy::providers::Provider;
+use alloy::sol;
+// use std::error::Error;
 #[derive(Debug)]
 pub struct EnsContractAddresses {
     pub ens_registry: Address,
@@ -40,19 +42,38 @@ sol! {
     }
 }
 
-pub async fn resolve_name(name: &str, provider: &impl Provider) -> Address {
+pub async fn resolve_name(name: &str, provider: &impl Provider) -> RensResult<Address> {
     let registry = ENSRegistry::new(EnsContractAddresses::mainnet().ens_registry, &provider);
-    let node = namehashing(name);
+
+    // Hash the name
+    let node = namehash(&name)?;
+
+    // Call the ENS Registry to get resolver address
     let resolver_address = registry
         .resolver(node)
         .call()
         .await
-        .expect("Something went wrong");
+        .map_err(|e| RensError::NameResolution(NameResolutionError::RensNameResolution(e)))?;
+
+    // Check if resolver address is Zero address
+    if Address::ZERO == resolver_address {
+        return Err(RensError::NameResolution(
+            NameResolutionError::ZeroAddressResolved,
+        ));
+    }
 
     let resolver_contract = PublicResolver::new(resolver_address, &provider);
-    resolver_contract
+    let node_address = resolver_contract
         .addr(node)
         .call()
         .await
-        .expect("something went wrong")
+        .map_err(|e| RensError::NameResolution(NameResolutionError::RensNameResolution(e)))?;
+
+    if node_address == Address::ZERO {
+        return Err(RensError::NameResolution(
+            NameResolutionError::NoAddressRecord(name.to_string()),
+        ));
+    }
+
+    Ok(node_address)
 }
