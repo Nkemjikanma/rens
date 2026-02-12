@@ -12,7 +12,12 @@ async fn main() {
         .await
         .expect("Something went wrong");
 
-    let address = resolve_name("vitalik.eth", &provider).await;
+    let address = resolve_name("vitalik.eth", &provider)
+        .await
+        .expect("Name resolutions went wrong!");
 
-    println!("{}", address)
+    let address_test = resolve_name("", &provider).await.expect("Error");
+
+    println!("{}", address);
+    println!("{}", address_test);
 }
