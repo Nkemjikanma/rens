@@ -1,4 +1,7 @@
-use crate::errors::{NameResolutionError, RensError, RensResult};
+use crate::errors::{
+    ForwardNameResolutionError, NameResolutionError, RensError, RensResult,
+    ReverseNameResolutionError,
+};
 
 // use super::errors;
 use super::name_hash::namehash;
@@ -39,6 +42,7 @@ sol! {
     #[sol(rpc)]
     contract PublicResolver {
         function addr(bytes32 node) view returns (address);
+        function name(bytes32 node) view returns (string);
     }
 }
 
@@ -55,10 +59,12 @@ pub async fn resolve_name(name: &str, provider: &impl Provider) -> RensResult<Ad
         .await
         .map_err(|e| RensError::NameResolution(NameResolutionError::RensNameResolution(e)))?;
 
+    println!("{}", resolver_address);
+
     // Check if resolver address is Zero address
     if Address::ZERO == resolver_address {
         return Err(RensError::NameResolution(
-            NameResolutionError::ZeroAddressResolved,
+            NameResolutionError::NoResolverFound,
         ));
     }
 
@@ -70,10 +76,65 @@ pub async fn resolve_name(name: &str, provider: &impl Provider) -> RensResult<Ad
         .map_err(|e| RensError::NameResolution(NameResolutionError::RensNameResolution(e)))?;
 
     if node_address == Address::ZERO {
-        return Err(RensError::NameResolution(
-            NameResolutionError::NoAddressRecord(name.to_string()),
-        ));
+        return Err(RensError::NameResolution(NameResolutionError::Forward(
+            ForwardNameResolutionError::NoAddressRecord(name.to_string()),
+        )));
     }
 
     Ok(node_address)
+}
+
+pub async fn resolve_address(addr: Address, provider: &impl Provider) -> RensResult<String> {
+    if addr == Address::ZERO {
+        return Err(RensError::NameResolution(
+            NameResolutionError::ZeroAddressResolved,
+        ));
+    }
+
+    let addr = addr.to_string().to_lowercase();
+    let prefix_stripped = addr.strip_prefix("0x");
+
+    match prefix_stripped {
+        Some(reversed_name) => {
+            let registry =
+                ENSRegistry::new(EnsContractAddresses::mainnet().ens_registry, &provider);
+            let hashed_reversed_name =
+                namehash(format!("{}.addr.reverse", reversed_name).as_str())?;
+
+            let resolver_address = registry
+                .resolver(hashed_reversed_name)
+                .call()
+                .await
+                .map_err(|e| {
+                    RensError::NameResolution(NameResolutionError::RensNameResolution(e))
+                })?;
+
+            // Check if resolver address is Zero address
+            if Address::ZERO == resolver_address {
+                return Err(RensError::NameResolution(
+                    NameResolutionError::NoResolverFound,
+                ));
+            }
+
+            let resolver_contract = PublicResolver::new(resolver_address, &provider);
+            let ens_name = resolver_contract
+                .name(hashed_reversed_name)
+                .call()
+                .await
+                .map_err(|e| {
+                    RensError::NameResolution(NameResolutionError::RensNameResolution(e))
+                })?;
+
+            if ens_name.is_empty() {
+                return Err(RensError::NameResolution(
+                    NameResolutionError::PrimaryNameNotSet,
+                ));
+            }
+
+            Ok(ens_name)
+        }
+        None => Err(RensError::NameResolution(NameResolutionError::Reverse(
+            ReverseNameResolutionError::AddressError,
+        ))),
+    }
 }

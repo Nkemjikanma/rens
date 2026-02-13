@@ -8,20 +8,37 @@ pub enum NameHashingError {
     EmptyName,
     // EmptyName(&'static str),
 }
-// #[derive(Error, Debug)]
-// pub enum ProviderError {
-//     // Provider initializations error
-// }
+#[derive(Error, Debug)]
+pub enum ReverseNameResolutionError {
+    #[error("Error processing provided address")]
+    AddressError,
+}
+
+#[derive(Error, Debug)]
+pub enum ForwardNameResolutionError {
+    #[error("No address records exists for: {0}")]
+    NoAddressRecord(String),
+}
+
 #[derive(Error, Debug)]
 pub enum NameResolutionError {
+    #[error(transparent)]
+    Forward(#[from] ForwardNameResolutionError),
+
+    #[error(transparent)]
+    Reverse(#[from] ReverseNameResolutionError),
+
     #[error("There was an error during the name resolution proces: {0}")]
     RensNameResolution(#[source] ContractCallError),
 
-    #[error("Resolved address is Zero address")]
+    #[error("Zero address found")]
     ZeroAddressResolved,
 
-    #[error("No address records exists for: {0}")]
-    NoAddressRecord(String),
+    #[error("No resolver found")]
+    NoResolverFound,
+
+    #[error("Primary name not set")]
+    PrimaryNameNotSet,
 }
 
 #[derive(Error, Debug)]
