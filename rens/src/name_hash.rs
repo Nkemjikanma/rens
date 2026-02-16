@@ -29,21 +29,15 @@ fn compute_namehash(s: &str) -> B256 {
     let mut six_four_bytes = [0u8; 64];
 
     if s.contains('.') {
-        let split_name = s.split_once('.');
+        if let Some((label, parent)) = s.split_once('.') {
+            six_four_bytes[0..32].copy_from_slice(compute_namehash(parent).as_slice());
 
-        match split_name {
-            Some((label, parent)) => {
-                six_four_bytes[0..32].copy_from_slice(compute_namehash(parent).as_slice());
+            six_four_bytes[32..64].copy_from_slice(keccak256(label.as_bytes()).as_slice());
 
-                six_four_bytes[32..64].copy_from_slice(keccak256(label.as_bytes()).as_slice());
-
-                keccak256(six_four_bytes)
-            }
-
-            None => {
-                println!("Invalid");
-                B256::ZERO
-            }
+            return keccak256(six_four_bytes);
+        } else {
+            println!("Invalid");
+            B256::ZERO
         }
     } else {
         six_four_bytes[0..32].copy_from_slice(compute_namehash("").as_slice());
