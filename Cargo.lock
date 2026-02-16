@@ -1397,7 +1397,6 @@ name = "ens-normalize"
 version = "0.1.0"
 dependencies = [
  "idna",
- "serde",
  "thiserror",
 ]
 
