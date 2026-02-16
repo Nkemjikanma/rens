@@ -5,7 +5,7 @@ pub mod errors;
 //     uts46::{AsciiDenyList, Hyphens},
 // };
 
-// TODO: Add idna crate for proper Unicode normalization
+// TODO: Switch to UTS-46 processing and add any required ENS-specific normalization/validation rules
 pub fn normalize(name: &str) -> Result<String, errors::NormalizationError> {
     let trimmed_and_lowered = name.trim().to_lowercase();
 
