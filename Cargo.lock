@@ -1395,6 +1395,10 @@ dependencies = [
 [[package]]
 name = "ens-normalize"
 version = "0.1.0"
+dependencies = [
+ "idna",
+ "thiserror",
+]
 
 [[package]]
 name = "enum-ordinalize"

@@ -8,12 +8,15 @@ use ens_normalize::normalize;
 pub fn namehash(s: &str) -> RensResult<B256> {
     let normalized_string = normalize(s);
 
-    if normalized_string.is_empty() {
-        return Err(RensError::NameHashing(NameHashingError::EmptyName));
-    } else {
-        let node = compute_namehash(normalized_string.as_str());
+    match normalized_string {
+        Ok(string_value) => {
+            let node = compute_namehash(string_value.as_str());
 
-        return Ok(node);
+            Ok(node)
+        }
+        Err(error) => Err(RensError::NameHashing(
+            NameHashingError::NormalizationError(error.to_string()),
+        )),
     }
 }
 
@@ -26,25 +29,19 @@ fn compute_namehash(s: &str) -> B256 {
     let mut six_four_bytes = [0u8; 64];
 
     if s.contains('.') {
-        let split_name = s.split_once('.');
+        if let Some((label, parent)) = s.split_once('.') {
+            six_four_bytes[0..32].copy_from_slice(compute_namehash(parent).as_slice());
 
-        match split_name {
-            Some((label, parent)) => {
-                six_four_bytes[0..32].copy_from_slice(compute_namehash(parent).as_slice());
+            six_four_bytes[32..64].copy_from_slice(keccak256(label.as_bytes()).as_slice());
 
-                six_four_bytes[32..64].copy_from_slice(keccak256(label.as_bytes()).as_slice());
-
-                return keccak256(six_four_bytes);
-            }
-
-            None => {
-                println!("Invalid");
-                return B256::ZERO;
-            }
+            return keccak256(six_four_bytes);
+        } else {
+            println!("Invalid");
+            B256::ZERO
         }
     } else {
         six_four_bytes[0..32].copy_from_slice(compute_namehash("").as_slice());
         six_four_bytes[32..64].copy_from_slice(keccak256(s.as_bytes()).as_slice());
-        return keccak256(six_four_bytes);
+        keccak256(six_four_bytes)
     }
 }

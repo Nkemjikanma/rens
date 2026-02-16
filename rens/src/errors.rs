@@ -6,7 +6,9 @@ use thiserror::Error;
 pub enum NameHashingError {
     #[error("Please provide a name to resolve, name can't be empty")]
     EmptyName,
-    // EmptyName(&'static str),
+
+    #[error("Error encountered during normalization: {0}")]
+    NormalizationError(String),
 }
 #[derive(Error, Debug)]
 pub enum ReverseNameResolutionError {
